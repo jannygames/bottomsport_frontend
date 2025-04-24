@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Typography, Button, Card, CardContent,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  Grid, Paper, Divider,
+  Grid, Paper, Divider, Snackbar, Alert, Stack
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import apiClient from '../api/client';
+import apiClient, { deleteRoom } from '../api/client';
 
 // ─────────────────────────── TYPES ────────────────────────────
 // what the server sends back (snake_case)
@@ -58,6 +58,15 @@ const BlackjackWindow: React.FC = () => {
   const [newRoom, setNewRoom]           = useState<CreateRoomRequest>({
     title: '', minBet: 0, maxBet: 0,
   });
+  
+  // New state for delete confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error'
+  });
 
   // initial load
   useEffect(() => { fetchRooms(); }, []);
@@ -91,6 +100,39 @@ const BlackjackWindow: React.FC = () => {
     }
   };
 
+  // New function to handle room deletion
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete) return;
+    
+    try {
+      await deleteRoom(roomToDelete.id);
+      setDeleteDialogOpen(false);
+      setRoomToDelete(null);
+      setSnackbar({
+        open: true,
+        message: 'Room deleted successfully',
+        severity: 'success'
+      });
+      fetchRooms(); // Refresh the room list
+    } catch (err: any) {
+      console.error('Error deleting room:', err);
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.message || 'Failed to delete room',
+        severity: 'error'
+      });
+    }
+  };
+
+  const openDeleteConfirmation = (room: Room) => {
+    setRoomToDelete(room);
+    setDeleteDialogOpen(true);
+  };
+  
+  const closeSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   // ---------------- RENDER -----------------
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -102,13 +144,13 @@ const BlackjackWindow: React.FC = () => {
       <Box sx={{ mt:4 }}>
         <Grid container spacing={3}>
           {rooms.length === 0 ? (
-            <Grid item xs={12}>
+            <Grid sx={{ gridColumn: 'span 12' }}>
               <Paper sx={{ p:3, textAlign:'center' }}>
                 <Typography>No rooms available. Create a new room to start playing!</Typography>
               </Paper>
             </Grid>
           ) : rooms.map(room => (
-            <Grid item xs={12} sm={6} md={4} key={room.id}>
+            <Grid key={room.id} sx={{ gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 4' } }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6">{room.title}</Typography>
@@ -119,11 +161,21 @@ const BlackjackWindow: React.FC = () => {
                   <Typography>
                     Created: {new Date(room.creationDate).toLocaleDateString()}
                   </Typography>
-                  <Button fullWidth sx={{ mt:2 }}
-                          variant="contained"
-                          onClick={() => navigate(`/blackjack/room/${room.id}`)}>
-                    Join Room
-                  </Button>
+                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                    <Button fullWidth
+                            variant="contained"
+                            onClick={() => navigate(`/blackjack/room/${room.id}`)}>
+                      Join Room
+                    </Button>
+                    {user && user.id === room.roomCreator && (
+                      <Button 
+                        variant="outlined"
+                        color="error"
+                        onClick={() => openDeleteConfirmation(room)}>
+                        Delete
+                      </Button>
+                    )}
+                  </Stack>
                 </CardContent>
               </Card>
             </Grid>
@@ -150,6 +202,40 @@ const BlackjackWindow: React.FC = () => {
           <Button variant="contained" onClick={handleCreateRoom}>Create</Button>
         </DialogActions>
       </Dialog>
+
+      {/* ─────────── Delete confirmation dialog ─────────── */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the room "{roomToDelete?.title}"?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteRoom}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={closeSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={closeSnackbar} 
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

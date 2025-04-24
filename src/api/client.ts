@@ -84,4 +84,20 @@ export const logoutUser = async () => {
     }
 };
 
+export const deleteRoom = async (roomId: number) => {
+    try {
+        console.log(`Deleting room with ID: ${roomId}`);
+        const response = await apiClient.post(`/api/Room/delete/${roomId}`);
+        console.log(`Delete room response:`, response.data);
+        return response.data;
+    } catch (error) {
+        console.error(`Error deleting room ${roomId}:`, error);
+        if (axios.isAxiosError(error)) {
+            console.error('Response status:', error.response?.status);
+            console.error('Response data:', error.response?.data);
+        }
+        throw error;
+    }
+};
+
 export default apiClient; 
