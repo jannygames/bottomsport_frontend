@@ -2,33 +2,49 @@ import axios from 'axios';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:5251',
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true 
 });
 
-apiClient.interceptors.response.use(
-    (response) => response,
+// Add request interceptor for logging
+apiClient.interceptors.request.use(
+    (config) => {
+        console.log('Request:', {
+            url: config.url,
+            method: config.method,
+            headers: config.headers,
+            data: config.data,
+        });
+        return config;
+    },
     (error) => {
-        console.error('API Error:', error);
+        console.error('Request error:', error);
+        return Promise.reject(error);
+    }
+);
+
+// Add response interceptor for logging
+apiClient.interceptors.response.use(
+    (response) => {
+        console.log('Response:', {
+            status: response.status,
+            data: response.data,
+            headers: response.headers,
+        });
+        return response;
+    },
+    (error) => {
+        console.error('Response error:', error);
         if (error.response) {
-            console.error('Response data:', error.response.data);
-            console.error('Response status:', error.response.status);
-            console.error('Response headers:', error.response.headers);
-            
-            
-            const errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
-            throw new Error(errorMessage);
-        } else if (error.request) {
-            
-            console.error('No response received:', error.request);
-            throw new Error('No response from server. Please check if the server is running.');
-        } else {
-            
-            console.error('Error setting up request:', error.message);
-            throw new Error('Failed to make request. Please try again.');
+            console.error('Error response:', {
+                status: error.response.status,
+                data: error.response.data,
+                headers: error.response.headers,
+            });
         }
+        return Promise.reject(error);
     }
 );
 
