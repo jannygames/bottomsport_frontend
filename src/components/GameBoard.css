@@ -1,0 +1,114 @@
+.game-board {
+  position: relative;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.game-board canvas {
+  transition: all 0.3s ease;
+}
+
+.game-board canvas.collision {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.vehicle {
+  position: absolute;
+  height: 30px;
+  background-color: #3366cc;
+  transition: transform 0.5s linear;
+}
+
+.vehicle-right {
+  animation: moveRight 8s linear infinite;
+}
+
+.vehicle-left {
+  animation: moveLeft 8s linear infinite;
+}
+
+@keyframes moveRight {
+  0% { transform: translateX(-100px); }
+  100% { transform: translateX(calc(100% + 100px)); }
+}
+
+@keyframes moveLeft {
+  0% { transform: translateX(calc(100% + 100px)); }
+  100% { transform: translateX(-100px); }
+}
+
+.stat-item {
+  text-align: center;
+  padding: 10px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.stat-item:hover {
+  background-color: rgba(235, 235, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.difficulty-btn {
+  transition: all 0.2s ease;
+}
+
+.difficulty-btn:hover {
+  transform: scale(1.05);
+}
+
+.difficulty-btn.selected {
+  transform: scale(1.05);
+  font-weight: bold;
+}
+
+.bet-slider {
+  padding: 20px 10px;
+}
+
+.game-controls {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.move-button, .cashout-button {
+  min-width: 180px;
+  height: 60px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.move-button:hover, .cashout-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Add glow effect to cashout button when multiplier increases */
+.cashout-button.highlight {
+  animation: glow 1s ease-in-out;
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.8); }
+}
+
+/* Add pulse animation */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+} 

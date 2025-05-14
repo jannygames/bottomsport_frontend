@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { loginUser, logoutUser } from '../api/client';
+import { loginUser, logoutUser, getUserBalance } from '../api/client';
+
+// Define the same event name used in MissionCrossable and Navbar
+const BALANCE_UPDATE_EVENT = 'BALANCE_UPDATE_EVENT';
+
+// Create a custom event to update balance across components
+const createBalanceUpdateEvent = (newBalance: number) => {
+  return new CustomEvent(BALANCE_UPDATE_EVENT, { 
+    detail: { balance: newBalance },
+    bubbles: true
+  });
+};
 
 interface User {
   id: number;
@@ -11,6 +22,7 @@ interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -53,10 +65,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshBalance = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const newBalance = await getUserBalance(user.id);
+      // Dispatch the event to update balance in all components
+      document.dispatchEvent(createBalanceUpdateEvent(newBalance));
+      console.log('Balance refreshed globally:', newBalance);
+      return newBalance;
+    } catch (error) {
+      console.error('Failed to refresh balance:', error);
+    }
+  };
+
   const value = {
     user,
     login,
     logout,
+    refreshBalance,
     isAuthenticated: !!user,
   };
 

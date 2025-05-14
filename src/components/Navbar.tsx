@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -13,11 +13,56 @@ import {
   MenuItem,
 } from '@mui/material';
 import logo from '../assets/logo.png';
+import PaymentDialog from './PaymentDialog';
+import { getUserBalance } from '../api/client';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5251';
+
+// Define the same event name used in MissionCrossable
+const BALANCE_UPDATE_EVENT = 'BALANCE_UPDATE_EVENT';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+
+  useEffect(() => {
+    if (user) {
+      fetchBalance();
+    }
+  }, [user]);
+
+  // Add event listener for balance updates from other components
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.balance;
+      if (newBalance !== undefined && typeof newBalance === 'number') {
+        console.log('Navbar received balance update:', newBalance);
+        setBalance(newBalance);
+      }
+    };
+
+    // Add event listener
+    document.addEventListener(BALANCE_UPDATE_EVENT, handleBalanceUpdate as EventListener);
+
+    // Clean up
+    return () => {
+      document.removeEventListener(BALANCE_UPDATE_EVENT, handleBalanceUpdate as EventListener);
+    };
+  }, []);
+
+  const fetchBalance = async () => {
+    if (user) {
+      try {
+        const newBalance = await getUserBalance(user.id);
+        setBalance(newBalance);
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+      }
+    }
+  };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -31,6 +76,10 @@ const Navbar: React.FC = () => {
     logout();
     handleMenuClose();
     navigate('/login');
+  };
+
+  const handlePaymentSuccess = () => {
+    fetchBalance();
   };
 
   if (!user) return null;
@@ -70,6 +119,19 @@ const Navbar: React.FC = () => {
           >
             Settings
           </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body1" sx={{ color: 'black' }}>
+              Balance: <span className="balance-amount">${balance.toFixed(2)}</span>
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setIsPaymentDialogOpen(true)}
+              sx={{ bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
+            >
+              Top Up
+            </Button>
+          </Box>
           <IconButton 
             onClick={handleMenuOpen} 
             sx={{ color: 'black' }}
@@ -88,6 +150,14 @@ const Navbar: React.FC = () => {
           <MenuItem onClick={handleLogout}>Logout</MenuItem>
         </Menu>
       </Toolbar>
+      {user && (
+        <PaymentDialog
+          open={isPaymentDialogOpen}
+          onClose={() => setIsPaymentDialogOpen(false)}
+          userId={user.id}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </AppBar>
   );
 };
