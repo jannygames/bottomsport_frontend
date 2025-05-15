@@ -31,6 +31,7 @@ const DIFFICULTY_SETTINGS = {
 
 // Game settings
 const MAX_LANES = 25; // Maximum number of lanes before auto-cashout
+const LANES_PER_SET = 6; // Number of lanes to show at a time
 
 // Define keyframe animations
 const keyframes = `
@@ -38,6 +39,16 @@ const keyframes = `
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4); }
   70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+@keyframes flash {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0.5; }
+}
+
+@keyframes slideIn {
+  0% { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 `;
 
@@ -74,13 +85,34 @@ const GameBoard: React.FC<{
       
       const laneHeight = 60;
       const numLanes = Math.floor(height / laneHeight);
+      const currentSet = Math.floor(lanesCompleted / LANES_PER_SET);
+      const visibleLanes = Math.min((currentSet + 1) * LANES_PER_SET, MAX_LANES);
       
-      for (let i = 1; i < numLanes; i++) {
+      // Only draw visible lanes
+      for (let i = 1; i <= Math.min(visibleLanes, numLanes); i++) {
         const y = i * laneHeight;
+        
+        // Highlight newly visible lanes with different color
+        const currentSetStart = currentSet * LANES_PER_SET + 1;
+        const isNewlyVisibleLane = i > lanesCompleted && i >= currentSetStart && i < currentSetStart + LANES_PER_SET;
+        
+        if (isNewlyVisibleLane) {
+          // Use a different style for newly visible (but not completed) lanes
+          ctx.strokeStyle = '#FFD700'; // Gold color for new lanes
+          ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = '#FFF';
+          ctx.lineWidth = 1;
+        }
+        
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
         ctx.stroke();
+        
+        // Reset to default line settings
+        ctx.strokeStyle = '#FFF';
+        ctx.lineWidth = 1;
       }
       
       // Draw completed lanes (green background)
@@ -88,9 +120,10 @@ const GameBoard: React.FC<{
       ctx.fillStyle = 'rgba(0, 100, 0, 0.3)';
       ctx.fillRect(0, height - completedHeight - laneHeight, width, completedHeight);
       
-      // Draw player (chicken)
+      // Draw player (chicken) - position based on lanes completed
       const playerX = width / 2;
-      const playerY = height - 40;
+      // Calculate chicken position based on completed lanes
+      const playerY = height - 40 - (lanesCompleted * laneHeight);
       
       if (isCollision) {
         // Draw collision animation
@@ -154,7 +187,8 @@ const GameBoard: React.FC<{
       
       // Draw vehicles in lanes
       if (!isCollision) {
-        for (let i = 1; i < numLanes - 1; i++) {
+        // Only draw vehicles in visible but not completed lanes
+        for (let i = 1; i <= Math.min(visibleLanes, numLanes); i++) {
           const y = height - (i * laneHeight) - laneHeight / 2;
           
           // Skip drawing vehicles in already completed lanes
@@ -218,41 +252,69 @@ const GameControls: React.FC<{
   const multiplierIncreased = currentMultiplier > previousMultiplier;
   const maxLanesReached = lanesCompleted >= maxLanes;
   
+  // Calculate current set information
+  const currentSet = Math.floor(lanesCompleted / LANES_PER_SET);
+  const lanesInCurrentSet = lanesCompleted % LANES_PER_SET;
+  const isSetComplete = lanesInCurrentSet === 0 && lanesCompleted > 0;
+  const isAboutToCompleteSet = lanesInCurrentSet === LANES_PER_SET - 1;
+  
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 2 }} className="game-controls">
-      <Button
-        variant="contained"
-        color="primary"
-        size="large"
-        onClick={onMoveForward}
-        disabled={isLoading || maxLanesReached}
-        sx={{ width: 200, height: 60 }}
-        className="move-button"
-      >
-        {isLoading && !isCashingOut ? (
-          <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-        ) : null}
-        {isLoading && !isCashingOut ? 'Moving...' : (maxLanesReached ? 'Max Reached' : 'Move Forward')}
-      </Button>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, gap: 2 }} className="game-controls">
+      {isAboutToCompleteSet && !maxLanesReached && (
+        <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
+          Next move completes this set of lanes!
+        </Typography>
+      )}
       
-      <Button
-        variant="contained"
-        color="success"
-        size="large"
-        onClick={onCashout}
-        disabled={isLoading}
-        sx={{ 
-          width: 200, 
-          height: 60,
-          animation: maxLanesReached ? 'pulse 1.5s infinite' : 'none'
-        }}
-        className={`cashout-button ${(multiplierIncreased || maxLanesReached) ? 'highlight' : ''}`}
-      >
-        {isCashingOut ? (
-          <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-        ) : null}
-        {isCashingOut ? 'Cashing Out...' : 'Cash Out'}
-      </Button>
+      {isSetComplete && !maxLanesReached && (
+        <Typography variant="subtitle2" color="success.main" sx={{ fontWeight: 'bold' }}>
+          Set {currentSet} completed! {LANES_PER_SET} more lanes revealed.
+        </Typography>
+      )}
+      
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          size="large"
+          onClick={onMoveForward}
+          disabled={isLoading || maxLanesReached}
+          sx={{ 
+            width: 200, 
+            height: 60,
+            animation: isAboutToCompleteSet && !isLoading ? 'pulse 1.5s infinite' : 'none'
+          }}
+          className="move-button"
+        >
+          {isLoading && !isCashingOut ? (
+            <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+          ) : null}
+          {isLoading && !isCashingOut ? 'Moving...' : (maxLanesReached ? 'Max Reached' : 'Move Forward')}
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="success"
+          size="large"
+          onClick={onCashout}
+          disabled={isLoading}
+          sx={{ 
+            width: 200, 
+            height: 60,
+            animation: maxLanesReached ? 'pulse 1.5s infinite' : 'none'
+          }}
+          className={`cashout-button ${(multiplierIncreased || maxLanesReached) ? 'highlight' : ''}`}
+        >
+          {isCashingOut ? (
+            <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+          ) : null}
+          {isCashingOut ? 'Cashing Out...' : 'Cash Out'}
+        </Button>
+      </Box>
+      
+      <Typography variant="body2">
+        Set {currentSet + 1}: {lanesInCurrentSet} / {LANES_PER_SET} lanes completed
+      </Typography>
     </Box>
   );
 };
@@ -480,7 +542,21 @@ const MissionCrossable: React.FC = () => {
         console.error('Error details:', err.response?.data || 'No response data');
         // If the API call fails, simulate game logic
         const settings = DIFFICULTY_SETTINGS[difficulty as keyof typeof DIFFICULTY_SETTINGS];
-        const collisionOccurred = Math.random() < settings.collisionProbability;
+        
+        // Calculate the current set and check if we've completed a set
+        const currentSet = Math.floor(lanesCompleted / LANES_PER_SET);
+        const nextLane = lanesCompleted + 1;
+        const nextSet = Math.floor(nextLane / LANES_PER_SET);
+        const completingSet = currentSet !== nextSet;
+        
+        // Adjust collision probability based on set completion
+        // Higher chance of collision when completing a set
+        let adjustedProbability = settings.collisionProbability;
+        if (completingSet) {
+          adjustedProbability = Math.min(adjustedProbability * 1.1, 1.0); // Small increase for set completion
+        }
+        
+        const collisionOccurred = Math.random() < adjustedProbability;
         
         if (collisionOccurred) {
           setIsCollision(true);
@@ -507,6 +583,11 @@ const MissionCrossable: React.FC = () => {
               break;
             default:
               multiplierIncrease = 0.10;
+          }
+          
+          // Give a slight bonus when completing a set of lanes
+          if (completingSet) {
+            multiplierIncrease *= 1.2; // 20% bonus on set completion
           }
           
           moveResponse = {
@@ -793,6 +874,9 @@ const MissionCrossable: React.FC = () => {
                     }}
                   >
                     {lanesCompleted}{lanesCompleted >= MAX_LANES && ' (MAX!)'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: 'block' }}>
+                    Set {Math.floor(lanesCompleted / LANES_PER_SET) + 1}: {lanesCompleted % LANES_PER_SET} / {LANES_PER_SET}
                   </Typography>
                 </Box>
               </Box>

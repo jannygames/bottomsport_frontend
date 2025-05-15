@@ -7,6 +7,8 @@ import Navbar from './components/Navbar';
 import HomeWindow from './components/HomeWindow';
 import BlackjackWindow from './components/BlackjackWindow';
 import MissionCrossable from './components/MissionCrossable';
+import MissionCrossableLeaderboard from './components/MissionCrossableLeaderboard';
+import MissionCrossableStats from './components/MissionCrossableStats';
 import Settings from './components/Settings';
 import PaymentSuccess from './components/PaymentSuccess';
 import './App.css';
@@ -43,6 +45,8 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               } />
               <Route path="/mission-crossable" element={<PrivateRoute element={<MissionCrossable />} />} />
+              <Route path="/mission-leaderboard" element={<PrivateRoute element={<MissionCrossableLeaderboard />} />} />
+              <Route path="/mission-stats" element={<PrivateRoute element={<MissionCrossableStats />} />} />
               <Route path="/settings" element={<PrivateRoute element={<Settings />} />} />
               <Route path="/payment-success" element={<PrivateRoute element={<PaymentSuccess />} />} />
             </Routes>
