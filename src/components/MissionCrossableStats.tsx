@@ -127,8 +127,8 @@ const MissionCrossableStats: React.FC = () => {
         ) : (
           <>
             {/* Summary Stats */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} md={4}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 30%' } }}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>Performance</Typography>
@@ -141,9 +141,9 @@ const MissionCrossableStats: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
               
-              <Grid item xs={12} md={4}>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 30%' } }}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>Financial Summary</Typography>
@@ -158,9 +158,9 @@ const MissionCrossableStats: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
               
-              <Grid item xs={12} md={4}>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 30%' } }}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>Game Details</Typography>
@@ -179,12 +179,12 @@ const MissionCrossableStats: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
             
             {/* Win/Loss Chart */}
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 48%' } }}>
                 <Paper sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom>Win/Loss Ratio</Typography>
                   <Box sx={{ height: 300 }}>
@@ -210,9 +210,9 @@ const MissionCrossableStats: React.FC = () => {
                     </ResponsiveContainer>
                   </Box>
                 </Paper>
-              </Grid>
+              </Box>
               
-              <Grid item xs={12} md={6}>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 48%' } }}>
                 <Paper sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom>Recent Games Performance</Typography>
                   <Box sx={{ height: 300 }}>
@@ -232,8 +232,8 @@ const MissionCrossableStats: React.FC = () => {
                     </ResponsiveContainer>
                   </Box>
                 </Paper>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
             
             {/* Game History Table - We'll skip this for now as it would make the component too large */}
           </>
