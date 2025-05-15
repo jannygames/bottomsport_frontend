@@ -19,8 +19,6 @@ import PaymentDialog from './PaymentDialog';
 import CashoutDialog from './CashoutDialog';
 import { getUserBalance } from '../api/client';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5251';
-
 // Define the same event name used in MissionCrossable
 const BALANCE_UPDATE_EVENT = 'BALANCE_UPDATE_EVENT';
 

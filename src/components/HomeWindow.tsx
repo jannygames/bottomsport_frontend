@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardMedia,
   Snackbar,
   Alert,
   AlertTitle

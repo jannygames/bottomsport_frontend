@@ -16,16 +16,12 @@ import {
   Elements, 
   PaymentElement, 
   useStripe, 
-  useElements,
-  AddressElement
+  useElements
 } from '@stripe/react-stripe-js';
 import apiClient from '../api/client';
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-
-// API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5251';
 
 // Define the same event name used for balance updates
 const BALANCE_UPDATE_EVENT = 'BALANCE_UPDATE_EVENT';
