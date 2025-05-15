@@ -1,20 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogTitle, DialogContent, Button, TextField, Typography, Box, CircularProgress } from '@mui/material';
+import { 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  Button, 
+  TextField, 
+  Typography, 
+  Box, 
+  CircularProgress,
+  Snackbar,
+  Alert
+} from '@mui/material';
 import { loadStripe } from '@stripe/stripe-js';
 import { 
   Elements, 
   PaymentElement, 
   useStripe, 
-  useElements,
-  AddressElement
+  useElements
 } from '@stripe/react-stripe-js';
 import apiClient from '../api/client';
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
-// API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5251';
+// Define the same event name used for balance updates
+const BALANCE_UPDATE_EVENT = 'BALANCE_UPDATE_EVENT';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -30,11 +40,24 @@ const PaymentForm = ({ onSuccess, onClose, userId }: { onSuccess: () => void; on
   const [error, setError] = useState<string>('');
   const [processing, setProcessing] = useState(false);
   const amountRef = useRef(amount);
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Update the ref whenever amount changes
   useEffect(() => {
     amountRef.current = amount;
   }, [amount]);
+
+  const closeNotification = () => {
+    setNotification({...notification, open: false});
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -79,7 +102,7 @@ const PaymentForm = ({ onSuccess, onClose, userId }: { onSuccess: () => void; on
         elements,
         clientSecret,
         confirmParams: {
-          return_url: `${window.location.origin}/payment-success`,
+          return_url: `${window.location.origin}/payment-success?payment_amount=${amount}`,
         },
         redirect: 'if_required'
       });
@@ -87,6 +110,11 @@ const PaymentForm = ({ onSuccess, onClose, userId }: { onSuccess: () => void; on
       if (confirmError) {
         setError(confirmError.message || 'An error occurred');
         console.error('Payment error:', confirmError);
+        setNotification({
+          open: true,
+          message: confirmError.message || 'Payment failed',
+          severity: 'error'
+        });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded:', paymentIntent);
         
@@ -99,64 +127,120 @@ const PaymentForm = ({ onSuccess, onClose, userId }: { onSuccess: () => void; on
         
         if (confirmResponse.data.success === true || confirmResponse.data.message) {
           // Either response format is acceptable
-          console.log('Balance updated:', confirmResponse.data.balance || 'Unknown');
-          onSuccess();
-          onClose();
+          const newBalance = confirmResponse.data.balance || 'Unknown';
+          console.log('Balance updated:', newBalance);
+          
+          // Show success notification
+          setNotification({
+            open: true,
+            message: `Successfully added $${amount.toFixed(2)} to your balance!`,
+            severity: 'success'
+          });
+          
+          // Dispatch a custom event to update balance in other components (e.g., Navbar)
+          if (typeof newBalance === 'number') {
+            const event = new CustomEvent(BALANCE_UPDATE_EVENT, {
+              detail: { 
+                balance: newBalance,
+                amount: amount 
+              }
+            });
+            document.dispatchEvent(event);
+          }
+          
+          // Wait for notification to be visible before closing
+          setTimeout(() => {
+            onSuccess();
+            onClose();
+          }, 2000);
         } else {
           setError('Failed to update balance. Please contact support.');
+          setNotification({
+            open: true,
+            message: 'Failed to update balance',
+            severity: 'error'
+          });
         }
       } else {
         setError('Payment not completed. Please try again.');
+        setNotification({
+          open: true,
+          message: 'Payment not completed',
+          severity: 'error'
+        });
       }
     } catch (err) {
       console.error('Payment error:', err);
       setError('An error occurred while processing your payment');
+      setNotification({
+        open: true,
+        message: 'An error occurred while processing your payment',
+        severity: 'error'
+      });
     } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Box sx={{ mb: 2 }}>
-        <TextField
+    <>
+      <form onSubmit={handleSubmit}>
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            label="Amount ($)"
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            inputProps={{ min: 5, step: 1 }}
+            error={!!error}
+            helperText={error || 'Minimum amount is $5'}
+            sx={{ mb: 2 }}
+            disabled={processing}
+          />
+          <PaymentElement />
+        </Box>
+        <Button
+          type="submit"
+          variant="contained"
           fullWidth
-          label="Amount ($)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          inputProps={{ min: 5, step: 1 }}
-          error={!!error}
-          helperText={error || 'Minimum amount is $5'}
-          sx={{ mb: 2 }}
-          disabled={processing}
-        />
-        <PaymentElement />
-      </Box>
-      <Button
-        type="submit"
-        variant="contained"
-        fullWidth
-        disabled={!stripe || !elements || processing}
-        sx={{ mt: 2, position: 'relative' }}
+          disabled={!stripe || !elements || processing}
+          sx={{ mt: 2, position: 'relative' }}
+        >
+          {processing ? (
+            <>
+              <CircularProgress 
+                size={24} 
+                sx={{ 
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }} 
+              />
+              Processing...
+            </>
+          ) : `Pay $${amount.toFixed(2)}`}
+        </Button>
+      </form>
+      
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={closeNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        {processing ? (
-          <>
-            <CircularProgress 
-              size={24} 
-              sx={{ 
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                marginTop: '-12px',
-                marginLeft: '-12px',
-              }} 
-            />
-            Processing...
-          </>
-        ) : `Pay $${amount.toFixed(2)}`}
-      </Button>
-    </form>
+        <Alert
+          onClose={closeNotification}
+          severity={notification.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

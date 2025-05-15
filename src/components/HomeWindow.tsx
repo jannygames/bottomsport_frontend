@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -6,14 +6,99 @@ import {
   Button,
   Card,
   CardContent,
-  CardMedia,
+  Snackbar,
+  Alert,
+  AlertTitle
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import blackjackImage from '../assets/blackjack.png';
 import missionImage from '../assets/mission.png';
 
+// Define the same event name used for balance updates
+const BALANCE_UPDATE_EVENT = 'BALANCE_UPDATE_EVENT';
+
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'info';
+  title?: string;
+}
+
 const HomeWindow: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [notification, setNotification] = useState<NotificationState>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
+  // Check for payment notification from query params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentSuccess = params.get('payment_success');
+    const paymentAmount = params.get('payment_amount');
+    const paymentError = params.get('payment_error');
+    
+    if (paymentSuccess === 'true' && paymentAmount) {
+      setNotification({
+        open: true,
+        message: `Successfully added $${parseFloat(paymentAmount).toFixed(2)} to your balance!`,
+        severity: 'success',
+        title: 'Payment Successful'
+      });
+      
+      // Clean up the URL
+      navigate('/', { replace: true });
+    } else if (paymentError) {
+      setNotification({
+        open: true,
+        message: decodeURIComponent(paymentError),
+        severity: 'error',
+        title: 'Payment Failed'
+      });
+      
+      // Clean up the URL
+      navigate('/', { replace: true });
+    }
+  }, [location.search, navigate]);
+
+  // Listen for balance update events
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.balance;
+      const amount = event.detail?.amount;
+      
+      if (newBalance !== undefined) {
+        setNotification({
+          open: true,
+          message: amount 
+            ? `Successfully added $${amount.toFixed(2)} to your balance!` 
+            : 'Your balance has been updated.',
+          severity: 'success',
+          title: 'Balance Updated'
+        });
+      }
+    };
+
+    // Add event listener
+    document.addEventListener(
+      BALANCE_UPDATE_EVENT, 
+      handleBalanceUpdate as EventListener
+    );
+
+    // Clean up
+    return () => {
+      document.removeEventListener(
+        BALANCE_UPDATE_EVENT, 
+        handleBalanceUpdate as EventListener
+      );
+    };
+  }, []);
+
+  const handleCloseNotification = () => {
+    setNotification({ ...notification, open: false });
+  };
 
   return (
     <Box sx={{ 
@@ -141,6 +226,27 @@ const HomeWindow: React.FC = () => {
             </CardContent>
           </Card>
         </Box>
+        
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={6000}
+          onClose={handleCloseNotification}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          sx={{ mt: 2 }}
+        >
+          <Alert
+            onClose={handleCloseNotification}
+            severity={notification.severity}
+            variant="filled"
+            sx={{ width: '100%' }}
+          >
+            {notification.title && (
+              <AlertTitle>{notification.title}</AlertTitle>
+            )}
+            {notification.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </Box>
   );

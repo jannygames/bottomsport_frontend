@@ -152,4 +152,37 @@ export const getUserBalance = async (userId: number) => {
     }
 };
 
+export const cashoutFunds = async (data: { userId: number; amount: number }) => {
+    try {
+        console.log(`Processing cashout for user ${data.userId}: $${data.amount}`);
+        const response = await apiClient.post('/api/User/cashout', {
+            userId: data.userId,
+            amount: data.amount
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error processing cashout:', error);
+        if (axios.isAxiosError(error) && error.response) {
+            // Return the error response data for better error handling
+            throw {
+                message: error.response.data.error || error.response.data.message || 'Cashout failed',
+                status: error.response.status,
+                data: error.response.data
+            };
+        }
+        throw { message: 'Cashout request failed' };
+    }
+};
+
+export const getUserCashoutHistory = async (userId: number) => {
+    try {
+        console.log(`Getting cashout history for user: ${userId}`);
+        const response = await apiClient.get(`/api/User/cashout-history/${userId}`);
+        return response.data.cashouts || [];
+    } catch (error) {
+        console.error('Error getting cashout history:', error);
+        return [];
+    }
+};
+
 export default apiClient; 
